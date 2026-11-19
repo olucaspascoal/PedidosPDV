@@ -1,4 +1,9 @@
 # Hostinger / Apache: entrega o app Angular em qualquer rota (/pdv, /gestao/vendas...)
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType image/svg+xml .svg
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
