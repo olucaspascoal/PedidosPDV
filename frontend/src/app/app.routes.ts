@@ -24,6 +24,7 @@ export const routes: Routes = [
       { path: '', title: 'Visão geral', loadComponent: () => import('./features/admin/dashboard.page').then(m => m.DashboardPage) },
       { path: 'vendas', title: 'Vendas', loadComponent: () => import('./features/admin/sales.page').then(m => m.SalesPage) },
       { path: 'produtos', title: 'Produtos', loadComponent: () => import('./features/admin/products.page').then(m => m.ProductsPage) },
+      { path: 'promocoes', title: 'Promoções', loadComponent: () => import('./features/admin/promotions.page').then(m => m.PromotionsPage) },
       { path: 'categorias', title: 'Categorias', loadComponent: () => import('./features/admin/categories.page').then(m => m.CategoriesPage) },
       { path: 'usuarios', title: 'Usuários', loadComponent: () => import('./features/admin/users.page').then(m => m.UsersPage) },
       { path: 'configuracoes', title: 'Configurações', loadComponent: () => import('./features/admin/settings.page').then(m => m.SettingsPage) },

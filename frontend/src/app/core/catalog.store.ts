@@ -21,8 +21,11 @@ export class CatalogStore {
     this.loading.set(this.products().length === 0);
     this.error.set('');
     try {
-      const [categories, products] = await Promise.all([this.api.categories(), this.api.products()]);
+      const [categories, products, promotions] = await Promise.all([
+        this.api.categories(), this.api.products(), this.api.promotions().catch(() => this.cart.promotions()),
+      ]);
       this.categories.set(categories);
+      this.cart.promotions.set(promotions);
       this.products.set(products);
       this.cart.refresh(products);
       this.loadedAt = Date.now();

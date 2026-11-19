@@ -43,12 +43,16 @@ public record PaymentDto(int Id, int OrderId, PaymentMethod Method, PaymentStatu
         simulated && p.Method == PaymentMethod.Pix, p.RefundedAt, p.RefundReason);
 }
 
+public record OrderPromotionDto(string Description, decimal Amount);
+
 public record OrderDto(int Id, string? Label, string? Notes, OrderStatus Status, string UserName, DateTime CreatedAt,
-    DateTime? ClosedAt, decimal Subtotal, decimal Discount, decimal Total, decimal Paid, decimal Remaining,
-    List<OrderItemDto> Items, List<PaymentDto> Payments)
+    DateTime? ClosedAt, decimal Subtotal, decimal PromoDiscount, List<OrderPromotionDto> Promotions, decimal Discount,
+    decimal Total, decimal Paid, decimal Remaining, List<OrderItemDto> Items, List<PaymentDto> Payments)
 {
     public static OrderDto From(Order o, bool simulated) => new(o.Id, o.Label, o.Notes, o.Status, o.User?.Name ?? "",
-        o.CreatedAt, o.ClosedAt, o.Subtotal, o.Discount, o.Total, o.Paid, o.Remaining,
+        o.CreatedAt, o.ClosedAt, o.Subtotal, o.PromoDiscount,
+        o.Promotions.OrderBy(p => p.Id).Select(p => new OrderPromotionDto(p.Description, p.Amount)).ToList(),
+        o.Discount, o.Total, o.Paid, o.Remaining,
         o.Items.OrderBy(i => i.Id).Select(i => new OrderItemDto(i.Id, i.ProductId, i.ProductName, i.UnitPrice, i.Quantity, i.Notes, i.UnitPrice * i.Quantity)).ToList(),
         o.Payments.OrderBy(p => p.Id).Select(p => PaymentDto.From(p, simulated)).ToList());
 }
@@ -60,6 +64,12 @@ public record OrderSummaryDto(int Id, string? Label, OrderStatus Status, string 
         o.Items.Sum(i => i.Quantity), o.Total, o.Paid,
         o.Payments.Where(p => p.Status == PaymentStatus.Aprovado).Select(p => p.Method).Distinct().ToList());
 }
+
+// ---------- Promoções ----------
+public record PromotionDto(int Id, string Name, PromotionType Type, int ProductId, string ProductName, decimal ProductPrice,
+    int Quantity, decimal? Price, int? PayQuantity, DateOnly? StartsOn, DateOnly? EndsOn, bool Active, string Rule, bool ValidToday);
+public record SavePromotionRequest(string? Name, PromotionType Type, int ProductId, int Quantity, decimal? Price, int? PayQuantity,
+    DateOnly? StartsOn, DateOnly? EndsOn, bool Active);
 
 // ---------- Pagamentos ----------
 public record CreatePaymentRequest(PaymentMethod Method, decimal? Amount, decimal? CashReceived, string? PayerEmail);

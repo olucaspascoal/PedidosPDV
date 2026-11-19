@@ -72,6 +72,7 @@ export class AdminShell {
     { path: '/gestao', label: 'Visão geral', icon: 'chart' },
     { path: '/gestao/vendas', label: 'Vendas', icon: 'receipt' },
     { path: '/gestao/produtos', label: 'Produtos', icon: 'box' },
+    { path: '/gestao/promocoes', label: 'Promoções', icon: 'percent' },
     { path: '/gestao/categorias', label: 'Categorias', icon: 'tag' },
     { path: '/gestao/usuarios', label: 'Usuários', icon: 'users' },
     { path: '/gestao/configuracoes', label: 'Configurações', icon: 'settings' },

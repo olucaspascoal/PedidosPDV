@@ -57,7 +57,7 @@ import { Logo } from '../../shared/ui';
     .ico b { position: absolute; top: -6px; right: -10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
       background: var(--brand); color: #fff; font-size: 10px; display: grid; place-items: center; }
     @media (min-width: 1024px) {
-      .shell { display: grid; grid-template-columns: 76px 1fr; }
+      .shell { display: grid; grid-template-columns: 76px minmax(0, 1fr); }
       .tabbar { display: none; }
       .rail { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 0; position: sticky; top: 0;
         height: 100dvh; background: #fff; border-right: 1px solid var(--line); }

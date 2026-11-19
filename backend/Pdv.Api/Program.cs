@@ -121,6 +121,7 @@ app.UseAuthorization();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 app.MapAuthAndUsers();
 app.MapCatalog();
+app.MapPromotions();
 app.MapOrders();
 app.MapAdmin();
 app.MapFallbackToFile("index.html");

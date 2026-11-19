@@ -56,6 +56,9 @@ import { Stepper } from '../../shared/ui';
 
           <div class="totals">
             <div class="row"><span class="muted">Subtotal</span><span class="num">{{ o.subtotal | currency }}</span></div>
+            @for (pr of o.promotions; track $index) {
+              <div class="row promo"><span>{{ pr.description }}</span><span class="num">- {{ pr.amount | currency }}</span></div>
+            }
             @if (o.discount > 0 || (o.status === 'Aberta' && auth.isAdmin())) {
               <div class="row">
                 <span class="muted">Desconto</span>
@@ -106,7 +109,7 @@ import { Stepper } from '../../shared/ui';
           </label>
           <div class="chips quick">
             @for (pct of [5, 10, 15]; track pct) {
-              <button type="button" class="chip" (click)="discountValue.value = pctValue(o.subtotal, pct)">{{ pct }}%</button>
+              <button type="button" class="chip" (click)="discountValue.value = pctValue(o.subtotal - o.promoDiscount, pct)">{{ pct }}%</button>
             }
           </div>
           <div class="modal-foot">
@@ -131,6 +134,7 @@ import { Stepper } from '../../shared/ui';
     .qty { color: var(--muted); }
     .total { text-align: right; font-weight: 600; font-size: 14px; }
     .totals { padding-top: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+    .promo { color: var(--ok); }
     .row { display: flex; justify-content: space-between; align-items: center; }
     .row.paid { color: var(--ok); }
     .row.big { font-size: 20px; font-weight: 600; padding-top: 6px; }

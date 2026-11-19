@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
   Category, Dashboard, LoginResponse, LoginUser, Order, OrderItemInput, OrderStatus, OrderSummary,
-  PaymentMethod, PaymentResult, PaymentSettings, Product, User, UserRole,
+  PaymentMethod, PaymentResult, PaymentSettings, Product, Promotion, PromotionType, User, UserRole,
 } from './models';
 
 declare global { interface Window { PDV_CONFIG?: { apiUrl?: string } } }
@@ -51,6 +51,14 @@ export class ApiService {
     return id ? this.put<Product>(`/products/${id}`, p) : this.post<Product>('/products', p);
   }
   deleteProduct(id: number) { return this.delete(`/products/${id}`); }
+
+  // Promoções
+  promotions(all = false) { return this.get<Promotion[]>('/promotions', { all }); }
+  savePromotion(p: { name: string | null; type: PromotionType; productId: number; quantity: number; price: number | null;
+    payQuantity: number | null; startsOn: string | null; endsOn: string | null; active: boolean }, id?: number) {
+    return id ? this.put<Promotion>(`/promotions/${id}`, p) : this.post<Promotion>('/promotions', p);
+  }
+  deletePromotion(id: number) { return this.delete(`/promotions/${id}`); }
 
   // Vendas
   orders(f: { status?: OrderStatus; from?: string; to?: string; take?: number } = {}) { return this.get<OrderSummary[]>('/orders', f); }

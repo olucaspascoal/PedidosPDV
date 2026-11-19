@@ -64,7 +64,16 @@ import { Stepper, Thumb } from '../../shared/ui';
 
     <div class="foot">
       <div class="row muted"><span>Itens</span><span class="num">{{ cart.count() }}</span></div>
+      @if (cart.applied().length) {
+        <div class="row muted"><span>Subtotal</span><span class="num">{{ cart.subtotal() | currency }}</span></div>
+        @for (a of cart.applied(); track a.productId) {
+          <div class="row promo"><span><app-icon name="percent" [size]="14" />{{ a.label }}</span><span class="num">- {{ a.amount | currency }}</span></div>
+        }
+      }
       <div class="row total"><span>Total</span><span class="num">{{ cart.total() | currency }}</span></div>
+      @if (cart.target() && cart.promotions().length) {
+        <p class="muted hint">Promoções são recalculadas com os itens que já estão na comanda.</p>
+      }
       @if (cart.target()) {
         <button class="btn primary lg block" [disabled]="cart.isEmpty() || busy()" (click)="addToTab()">
           <app-icon name="plus" />Adicionar à comanda
@@ -99,6 +108,9 @@ import { Stepper, Thumb } from '../../shared/ui';
     .foot { padding-top: 14px; display: flex; flex-direction: column; gap: 8px; }
     .row { display: flex; justify-content: space-between; font-size: 14px; }
     .total { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    .promo { color: var(--ok); font-size: 13px; }
+    .promo span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+    .hint { font-size: 12px; margin: -4px 0 8px; }
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   `,
 })

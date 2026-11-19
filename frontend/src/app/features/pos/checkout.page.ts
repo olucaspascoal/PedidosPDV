@@ -44,6 +44,12 @@ type Step = 'choose' | 'pix' | 'done';
                 @for (i of o.items; track i.id) {
                   <div class="it"><span>{{ i.quantity }}x {{ i.productName }}</span><span class="num">{{ i.total | currency }}</span></div>
                 }
+                @for (pr of o.promotions; track $index) {
+                  <div class="it"><span>🏷️ {{ pr.description }}</span><span class="num">- {{ pr.amount | currency }}</span></div>
+                }
+                @if (o.discount > 0) {
+                  <div class="it"><span>Desconto</span><span class="num">- {{ o.discount | currency }}</span></div>
+                }
               </details>
             </section>
 

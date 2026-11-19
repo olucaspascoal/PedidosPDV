@@ -58,6 +58,7 @@ const FEATURED = -1;
             @for (p of visible(); track p.id) {
               <article class="product" [class.out]="soldOut(p)" (click)="add(p)">
                 <app-thumb class="th" [src]="p.imageUrl" [icon]="p.categoryIcon" />
+                @if (promoOf(p); as promo) { <span class="promo-tag">{{ promo }}</span> }
                 @if (p.trackStock && p.stock <= 5) {
                   <span class="stock" [class.zero]="p.stock <= 0">{{ p.stock <= 0 ? 'Esgotado' : 'Restam ' + p.stock }}</span>
                 }
@@ -111,6 +112,7 @@ const FEATURED = -1;
     .th { aspect-ratio: 4 / 3; width: 100%; border-radius: 0; --thumb-emoji: 44px; }
     .stock { position: absolute; top: 10px; left: 10px; padding: 3px 9px; border-radius: 999px; background: #fff; font-size: 11px; font-weight: 500; color: var(--warn); }
     .stock.zero { color: var(--danger); }
+    .promo-tag { position: absolute; top: 10px; right: 10px; padding: 3px 9px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 11px; font-weight: 600; }
     .body { padding: 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
     h3 { font-size: 14px; line-height: 1.3; }
     .desc { font-size: 12px; color: var(--muted); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -125,7 +127,7 @@ const FEATURED = -1;
     .count { min-width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.22); display: grid; place-items: center; font-size: 14px; }
     @media (min-width: 640px) { .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); } }
     @media (min-width: 1024px) {
-      .layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; padding: 0 24px 24px; align-items: start; }
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; padding: 0 24px 24px; align-items: start; }
       .top { padding-top: 24px; }
       .side { display: flex; position: sticky; top: 24px; height: calc(100dvh - 48px); padding: 20px; margin-top: 24px; }
       .side app-cart-panel { flex: 1; }
@@ -153,6 +155,11 @@ export class CatalogPage implements OnInit {
   });
 
   ngOnInit() { this.store.load(); }
+
+  /** Texto do selo de promoção (as regras do produto, ex.: "3 por R$ 10,00"). */
+  promoOf(p: Product) {
+    return this.cart.promotions().filter(x => x.productId === p.id).map(x => x.rule).join(' · ');
+  }
 
   soldOut(p: Product) { return p.trackStock && this.cart.qtyOf(p.id) >= p.stock; }
 

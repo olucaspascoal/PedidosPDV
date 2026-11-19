@@ -12,6 +12,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<OrderPromotion> OrderPromotions => Set<OrderPromotion>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder b)
     {
@@ -23,6 +25,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Properties<OrderStatus>().HaveConversion<string>().HaveMaxLength(20);
         b.Properties<PaymentMethod>().HaveConversion<string>().HaveMaxLength(20);
         b.Properties<PaymentStatus>().HaveConversion<string>().HaveMaxLength(20);
+        b.Properties<PromotionType>().HaveConversion<string>().HaveMaxLength(20);
     }
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -58,6 +61,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
             e.HasMany(x => x.Items).WithOne().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Payments).WithOne(p => p.Order).HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Promotions).WithOne().HasForeignKey(x => x.OrderId).OnDelete(DeleteBehavior.Cascade);
             e.Ignore(x => x.Subtotal);
             e.Ignore(x => x.Total);
             e.Ignore(x => x.Paid);
@@ -69,6 +73,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.ProductName).HasMaxLength(120);
             e.Property(x => x.Notes).HasMaxLength(200);
             e.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        b.Entity<Promotion>(e =>
+        {
+            e.Property(x => x.Name).HasMaxLength(80).IsRequired();
+            e.HasIndex(x => new { x.ProductId, x.Active });
+            e.HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<OrderPromotion>(e =>
+        {
+            e.Property(x => x.Description).HasMaxLength(160);
+            // Excluir a promoção não apaga o histórico das vendas.
+            e.HasOne<Promotion>().WithMany().HasForeignKey(x => x.PromotionId).OnDelete(DeleteBehavior.SetNull);
         });
 
         b.Entity<Payment>(e =>

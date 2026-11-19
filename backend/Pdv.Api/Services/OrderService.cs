@@ -8,7 +8,7 @@ namespace Pdv.Api.Services;
 public class OrderService(AppDbContext db)
 {
     public Task<Order?> LoadAsync(int id, CancellationToken ct = default) =>
-        db.Orders.Include(o => o.Items).Include(o => o.Payments).Include(o => o.User)
+        db.Orders.Include(o => o.Items).Include(o => o.Payments).Include(o => o.Promotions).Include(o => o.User)
             .AsSplitQuery()
             .FirstOrDefaultAsync(o => o.Id == id, ct);
 
@@ -42,6 +42,7 @@ public class OrderService(AppDbContext db)
         }
 
         EnsureStock(order, products.Values);
+        await ApplyPromotionsAsync(order, ct);
     }
 
     public async Task UpdateItemAsync(Order order, int itemId, int quantity, CancellationToken ct = default)
@@ -53,13 +54,49 @@ public class OrderService(AppDbContext db)
 
         var product = await db.Products.FindAsync([item.ProductId], ct);
         if (product is not null) EnsureStock(order, [product]);
+        await ApplyPromotionsAsync(order, ct);
         EnsureConsistent(order);
+    }
+
+    /// <summary>
+    /// Recalcula as promoções da venda aberta: por produto, soma as unidades de todas as linhas
+    /// e aplica a promoção válida hoje que dá o maior desconto.
+    /// </summary>
+    public async Task ApplyPromotionsAsync(Order order, CancellationToken ct = default)
+    {
+        if (order.Status != OrderStatus.Aberta) return;
+        var today = Clock.Today();
+        var ids = order.Items.Select(i => i.ProductId).Distinct().ToList();
+        var promos = ids.Count == 0 ? [] : (await db.Promotions.Where(p => p.Active && ids.Contains(p.ProductId)).ToListAsync(ct))
+            .Where(p => PromotionCalculator.IsValidOn(p, today)).ToList();
+
+        order.Promotions.Clear();
+        foreach (var group in order.Items.GroupBy(i => i.ProductId))
+        {
+            var quantity = group.Sum(i => i.Quantity);
+            var unitPrice = group.Min(i => i.UnitPrice); // se o preço mudou no meio da comanda, usa o menor
+            var best = promos.Where(p => p.ProductId == group.Key)
+                .Select(p => (Promo: p, Amount: PromotionCalculator.Discount(p, quantity, unitPrice)))
+                .Where(x => x.Amount > 0)
+                .OrderByDescending(x => x.Amount)
+                .FirstOrDefault();
+            if (best.Promo is null) continue;
+            var name = group.First().ProductName;
+            order.Promotions.Add(new OrderPromotion
+            {
+                PromotionId = best.Promo.Id,
+                Description = $"{name}: {PromotionCalculator.Rule(best.Promo)}",
+                Amount = best.Amount,
+            });
+        }
+        order.PromoDiscount = order.Promotions.Sum(p => p.Amount);
     }
 
     public void EnsureConsistent(Order order)
     {
         if (order.Discount < 0) throw new DomainException("Desconto inválido.");
-        if (order.Discount > order.Subtotal) order.Discount = order.Subtotal;
+        var max = Math.Max(0, order.Subtotal - order.PromoDiscount);
+        if (order.Discount > max) order.Discount = max;
         if (order.Paid > order.Total)
             throw new DomainException("O total não pode ficar menor do que o valor já pago.");
     }

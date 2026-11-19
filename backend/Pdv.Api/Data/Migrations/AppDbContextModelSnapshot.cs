@@ -78,6 +78,10 @@ namespace Pdv.Api.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<decimal>("PromoDiscount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -137,6 +141,38 @@ namespace Pdv.Api.Data.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("OrderItems", "pdv");
+                });
+
+            modelBuilder.Entity("Pdv.Api.Domain.OrderPromotion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PromotionId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("PromotionId");
+
+                    b.ToTable("OrderPromotions", "pdv");
                 });
 
             modelBuilder.Entity("Pdv.Api.Domain.Payment", b =>
@@ -268,6 +304,56 @@ namespace Pdv.Api.Data.Migrations
                     b.ToTable("Products", "pdv");
                 });
 
+            modelBuilder.Entity("Pdv.Api.Domain.Promotion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("EndsOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<int?>("PayQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("Price")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("StartsOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId", "Active");
+
+                    b.ToTable("Promotions", "pdv");
+                });
+
             modelBuilder.Entity("Pdv.Api.Domain.User", b =>
                 {
                     b.Property<int>("Id")
@@ -332,6 +418,20 @@ namespace Pdv.Api.Data.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("Pdv.Api.Domain.OrderPromotion", b =>
+                {
+                    b.HasOne("Pdv.Api.Domain.Order", null)
+                        .WithMany("Promotions")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pdv.Api.Domain.Promotion", null)
+                        .WithMany()
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("Pdv.Api.Domain.Payment", b =>
                 {
                     b.HasOne("Pdv.Api.Domain.Order", "Order")
@@ -354,6 +454,17 @@ namespace Pdv.Api.Data.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("Pdv.Api.Domain.Promotion", b =>
+                {
+                    b.HasOne("Pdv.Api.Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Pdv.Api.Domain.Category", b =>
                 {
                     b.Navigation("Products");
@@ -364,6 +475,8 @@ namespace Pdv.Api.Data.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("Payments");
+
+                    b.Navigation("Promotions");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,5 +1,6 @@
 import { Injectable, computed, effect, signal } from '@angular/core';
-import { OrderItemInput, Product } from './models';
+import { OrderItemInput, Product, Promotion } from './models';
+import { bestPromo } from './promotions';
 import { storage } from './storage';
 
 export interface CartLine { key: string; product: Product; quantity: number; notes: string; }
@@ -17,8 +18,27 @@ export class CartService {
   readonly label = signal(this.saved?.label ?? '');
   readonly target = signal<CartTarget | null>(this.saved?.target ?? null);
 
+  /** Promoções válidas hoje (carregadas com o cardápio). */
+  readonly promotions = signal<Promotion[]>([]);
+
   readonly count = computed(() => this.lines().reduce((s, l) => s + l.quantity, 0));
-  readonly total = computed(() => this.lines().reduce((s, l) => s + l.quantity * l.product.price, 0));
+  readonly subtotal = computed(() => this.lines().reduce((s, l) => s + l.quantity * l.product.price, 0));
+  /** Prévia das promoções: por produto, somando as linhas (com e sem observação). */
+  readonly applied = computed(() => {
+    const byProduct = new Map<number, { product: Product; quantity: number }>();
+    for (const l of this.lines()) {
+      const cur = byProduct.get(l.product.id);
+      byProduct.set(l.product.id, { product: l.product, quantity: (cur?.quantity ?? 0) + l.quantity });
+    }
+    const list: { productId: number; label: string; amount: number }[] = [];
+    for (const { product, quantity } of byProduct.values()) {
+      const best = bestPromo(this.promotions(), product.id, quantity, product.price);
+      if (best) list.push({ productId: product.id, label: `${product.name}: ${best.promo.rule}`, amount: best.amount });
+    }
+    return list;
+  });
+  readonly promoTotal = computed(() => this.applied().reduce((s, a) => s + a.amount, 0));
+  readonly total = computed(() => Math.max(0, this.subtotal() - this.promoTotal()));
   readonly isEmpty = computed(() => this.lines().length === 0);
 
   constructor() {

@@ -69,6 +69,7 @@ import { DateRange, RangeFilter } from './range-filter';
             <div class="line"><span>{{ i.quantity }}x {{ i.productName }}@if (i.notes) { <small class="muted"> · {{ i.notes }}</small> }</span><span class="num">{{ i.total | currency }}</span></div>
           }
           <div class="line"><span class="muted">Subtotal</span><span class="num">{{ o.subtotal | currency }}</span></div>
+          @for (pr of o.promotions; track $index) { <div class="line"><span class="muted">{{ pr.description }}</span><span class="num">- {{ pr.amount | currency }}</span></div> }
           @if (o.discount) { <div class="line"><span class="muted">Desconto</span><span class="num">- {{ o.discount | currency }}</span></div> }
           <div class="line big"><span>Total</span><span class="num">{{ o.total | currency }}</span></div>
 

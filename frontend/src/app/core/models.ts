@@ -2,6 +2,7 @@ export type UserRole = 'Admin' | 'Atendente';
 export type OrderStatus = 'Aberta' | 'Paga' | 'Cancelada' | 'Estornada';
 export type PaymentMethod = 'Pix' | 'Dinheiro' | 'Credito' | 'Debito';
 export type PaymentStatus = 'Pendente' | 'Aprovado' | 'Cancelado' | 'Expirado' | 'Recusado' | 'Estornado';
+export type PromotionType = 'LevePorPreco' | 'LeveXPagueY';
 
 export interface User { id: number; name: string; role: UserRole; active: boolean; }
 export interface LoginUser { id: number; name: string; role: UserRole; }
@@ -28,13 +29,20 @@ export interface Payment {
 
 export interface Order {
   id: number; label: string | null; notes: string | null; status: OrderStatus; userName: string;
-  createdAt: string; closedAt: string | null; subtotal: number; discount: number; total: number;
+  createdAt: string; closedAt: string | null; subtotal: number; promoDiscount: number;
+  promotions: { description: string; amount: number }[]; discount: number; total: number;
   paid: number; remaining: number; items: OrderItem[]; payments: Payment[];
 }
 
 export interface OrderSummary {
   id: number; label: string | null; status: OrderStatus; userName: string; createdAt: string;
   closedAt: string | null; itemCount: number; total: number; paid: number; methods: PaymentMethod[];
+}
+
+export interface Promotion {
+  id: number; name: string; type: PromotionType; productId: number; productName: string; productPrice: number;
+  quantity: number; price: number | null; payQuantity: number | null; startsOn: string | null; endsOn: string | null;
+  active: boolean; rule: string; validToday: boolean;
 }
 
 export interface PaymentResult { payment: Payment; orderStatus: OrderStatus; orderRemaining: number; }
