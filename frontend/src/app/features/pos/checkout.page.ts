@@ -64,18 +64,8 @@ type Step = 'choose' | 'pix' | 'done';
             </div>
 
             <section class="card form">
-              <label class="field">
-                <span class="lbl">Valor a cobrar {{ splitting() ? '(parcial)' : '' }}</span>
-                <div class="money">
-                  <span>R$</span>
-                  <input class="input num" inputmode="decimal" [ngModel]="amountText()" (ngModelChange)="amountText.set($event)" (focus)="$any($event.target).select()" />
-                </div>
-              </label>
-              @if (amount() > o.remaining + 0.001 || amount() <= 0) {
-                <p class="err">Informe um valor entre R$ 0,01 e {{ o.remaining | currency }}.</p>
-              } @else if (splitting()) {
-                <p class="hint">Vai sobrar {{ o.remaining - amount() | currency }} para outra forma de pagamento.</p>
-              }
+              <!-- Valor travado no saldo da venda: não é editável na cobrança, para evitar cobrar a mais ou a menos. -->
+              <div class="due-row"><span class="lbl">Valor a cobrar</span><b class="num">{{ amount() | currency }}</b></div>
 
               @if (method() === 'Dinheiro') {
                 <label class="field">
@@ -194,6 +184,8 @@ type Step = 'choose' | 'pix' | 'done';
     .money .input { padding-left: 46px; font-size: 20px; font-weight: 600; height: 54px; }
     .err { color: var(--danger); font-size: 12px; }
     .hint { color: var(--muted); font-size: 13px; }
+    .due-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .due-row b { font-size: 20px; font-weight: 600; }
     .change { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: var(--radius-sm); background: var(--ok-50); color: var(--ok); font-weight: 600; }
     .change.neg { background: var(--warn-50); color: var(--warn); }
     .change.big { font-size: 20px; width: 100%; }
@@ -232,7 +224,6 @@ export class CheckoutPage {
   protected error = signal('');
   protected step = signal<Step>('choose');
   protected method = signal<PaymentMethod>('Pix');
-  protected amountText = signal('');
   protected receivedText = signal('');
   protected pix = signal<Payment | null>(null);
   protected busy = signal(false);
@@ -245,11 +236,8 @@ export class CheckoutPage {
   protected methodLabel = METHOD_LABEL;
   protected methodIcon = METHOD_ICON;
 
-  protected amount = computed(() => parseMoney(this.amountText()));
-  protected splitting = computed(() => {
-    const o = this.order();
-    return !!o && this.amount() > 0 && this.amount() < o.remaining - 0.001;
-  });
+  /** Sempre o saldo da venda: o valor da cobrança não pode ser editado. */
+  protected amount = computed(() => this.order()?.remaining ?? 0);
   protected change = computed(() => Math.round((parseMoney(this.receivedText()) - this.amount()) * 100) / 100);
   protected itemCount = computed(() => this.order()?.items.reduce((s, i) => s + i.quantity, 0) ?? 0);
   protected approved = computed(() => this.order()?.payments.filter(p => p.status === 'Aprovado') ?? []);
@@ -294,7 +282,6 @@ export class CheckoutPage {
 
   private setOrder(o: Order) {
     this.order.set(o);
-    this.amountText.set(this.fmt(o.remaining));
     this.receivedText.set('');
   }
 
