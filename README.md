@@ -53,7 +53,7 @@ Fluxo: `POST /v1/payments` com `payment_method_id=pix` → o app mostra o QR e o
 Celular / PC ──► Hostinger (site Angular, estático)
                      │  chamadas /api
                      ▼
-                 API C# (Render, Railway, Fly.io, VPS...) ──► Supabase (PostgreSQL)
+                 API C# (servidor Coolify, Docker) ──► Supabase (PostgreSQL)
                      ▲
         Mercado Pago (webhook do Pix)
 ```
@@ -65,13 +65,19 @@ A hospedagem compartilhada da Hostinger não roda .NET, por isso a API fica em u
 2. Em **Connect → Connection string**, copie a do **Session pooler** (a conexão direta só funciona com IPv6).
 3. Pronto: a API cria as tabelas sozinha ao iniciar (migrations), no schema `pdv`. Fora do schema `public`, as tabelas não ficam expostas pela API REST automática do Supabase.
 
-### 2. API (exemplo com Render)
-1. **New → Web Service**, conecte o repositório do GitHub, escolha **Docker** e informe `backend` como *Root Directory* (o `Dockerfile` está lá).
-2. Configure as variáveis de ambiente de [`backend/.env.example`](backend/.env.example):
-   `ConnectionStrings__Default`, `Jwt__Key`, `Cors__Origins`, `Seed__AdminPin` e as do Mercado Pago.
-3. Depois do deploy, teste `https://SUA-API/api/health`.
+### 2. API no Coolify
+1. **DNS:** crie um registro **A** para o subdomínio da API (ex.: `api.seudominio.com.br`) apontando para o IP do servidor Coolify. Se o domínio está na Hostinger, isso fica em *Domínios → Zona DNS*.
+2. No Coolify: **+ New Resource → Public Repository** (ou *Private Repository (with GitHub App)* se o repositório for privado) com `https://github.com/olucaspascoal/PedidosPDV`, branch `main`.
+3. Em **Build Pack** escolha **Dockerfile** e configure:
+   - **Base Directory:** `/backend`
+   - **Dockerfile Location:** `/Dockerfile`
+   - **Ports Exposes:** `8080`
+   - **Domains:** `https://api.seudominio.com.br` (o Coolify emite o certificado HTTPS)
+4. Em **Environment Variables**, cadastre as de [`backend/.env.example`](backend/.env.example): `ConnectionStrings__Default`, `Jwt__Key`, `Cors__Origins`, `Seed__AdminPin` e as do Mercado Pago. Não marque como *Build Variable*, elas só são usadas na execução.
+5. **Deploy.** Nos logs deve aparecer `Banco: PostgreSQL` e a criação das tabelas. Teste `https://api.seudominio.com.br/api/health`.
+6. Opcional: ative **Auto Deploy** (webhook do GitHub) para publicar a cada push na `main`.
 
-Qualquer serviço que rode Docker serve. A API lê a porta da variável `PORT` quando ela existe.
+O container tem `HEALTHCHECK` em `/api/health`, que o Coolify usa para saber se a API subiu.
 
 ### 3. Site na Hostinger
 ```bash
@@ -84,7 +90,7 @@ cd frontend && npm run build:hostinger
 Para trocar a API depois, basta editar o `config.js` no `public_html`, sem recompilar.
 
 ### 4. Mercado Pago
-`MercadoPago__AccessToken` com a credencial de produção, `MercadoPago__NotificationUrl=https://SUA-API/api/webhooks/mercadopago` e, no painel do Mercado Pago, cadastre essa mesma URL no webhook (evento **Pagamentos**) e copie a assinatura secreta para `MercadoPago__WebhookSecret`.
+`MercadoPago__AccessToken` com a credencial de produção, `MercadoPago__NotificationUrl=https://api.seudominio.com.br/api/webhooks/mercadopago` e, no painel do Mercado Pago, cadastre essa mesma URL no webhook (evento **Pagamentos**) e copie a assinatura secreta para `MercadoPago__WebhookSecret`.
 
 ### Migrations
 Ao mudar as entidades, gere uma nova migration (o `dotnet-ef` está no manifesto de ferramentas do `backend`):
