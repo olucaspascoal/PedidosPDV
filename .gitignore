@@ -1,0 +1,17 @@
+# macOS / exFAT
+.DS_Store
+._*
+
+# .NET
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+appsettings.*.local.json
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+backend/Pdv.Api/wwwroot/

@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "export PATH=\"$HOME/.dotnet:$PATH\" DOTNET_CLI_TELEMETRY_OPTOUT=1; cd backend/Pdv.Api && dotnet run --project Pdv.Api.csproj --launch-profile http"],
+      "port": 5080
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["ng", "serve", "--port", "4200"],
+      "cwd": "frontend",
+      "port": 4200
+    }
+  ]
+}
