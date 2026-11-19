@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Pdv.Api.Auth;
 using Pdv.Api.Data;
@@ -13,11 +13,30 @@ using Pdv.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Render, Railway, Fly etc. informam a porta pela variável PORT.
+if (Environment.GetEnvironmentVariable("PORT") is { Length: > 0 } port)
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddProblemDetails();
 
-// Banco: SQLite em desenvolvimento. Para PostgreSQL, troque por UseNpgsql (pacote Npgsql.EntityFrameworkCore.PostgreSQL).
-builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(builder.Configuration.GetConnectionString("Default") ?? "Data Source=pdv.db"));
+// Banco: SQLite em desenvolvimento; PostgreSQL (Supabase) quando a connection string for "Host=..." ou "postgresql://...".
+var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=pdv.db";
+builder.Services.AddDbContext<AppDbContext>(o => DatabaseSetup.Configure(o, connectionString));
+
+// Frontend hospedado em outro domínio (ex.: Hostinger): liste as origens em Cors:Origins, separadas por vírgula.
+var corsOrigins = (builder.Configuration["Cors:Origins"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Select(o => o.TrimEnd('/')).ToArray();
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
+
+// Atrás do proxy da hospedagem: usa o IP real do cliente (limite de tentativas de login) e o esquema https.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
 
 // Autenticação por PIN + JWT
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
@@ -65,6 +84,7 @@ builder.Services.AddScoped<PaymentService>();
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.Use(async (ctx, next) =>
 {
@@ -78,6 +98,7 @@ app.Use(async (ctx, next) =>
 
 app.UseDefaultFiles();
 app.UseStaticFiles(); // frontend compilado em wwwroot (produção)
+app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -92,9 +113,9 @@ app.MapFallbackToFile("index.html");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.EnsureCreatedAsync();
-    await Seed.RunAsync(db);
+    await DatabaseSetup.InitializeAsync(db, builder.Configuration["Seed:AdminPin"]);
 }
+app.Logger.LogInformation("Banco: {Provider}", DatabaseSetup.IsPostgres(connectionString) ? "PostgreSQL" : "SQLite");
 
 if (string.IsNullOrWhiteSpace(mp.AccessToken))
     app.Logger.LogWarning("Mercado Pago sem access token: Pix em MODO SIMULADO.");

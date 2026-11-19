@@ -1,0 +1,9 @@
+**/._*
+**/.DS_Store
+**/bin/
+**/obj/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/wwwroot/
+**/appsettings.Development.json

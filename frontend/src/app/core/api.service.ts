@@ -6,6 +6,11 @@ import {
   PaymentMethod, PaymentResult, PaymentSettings, Product, User, UserRole,
 } from './models';
 
+declare global { interface Window { PDV_CONFIG?: { apiUrl?: string } } }
+
+/** Base da API: definida em public/config.js (vazio = mesma origem, como no desenvolvimento com proxy). */
+export const API_BASE = `${(window.PDV_CONFIG?.apiUrl ?? '').replace(/\/+$/, '')}/api`;
+
 /** Extrai a mensagem amigável que a API devolve em { message }. */
 export function errorMessage(err: unknown, fallback = 'Algo deu errado. Tente novamente.'): string {
   if (err instanceof HttpErrorResponse) {
@@ -23,12 +28,12 @@ export class ApiService {
   private get<T>(url: string, params?: Record<string, string | number | boolean | undefined | null>) {
     let p = new HttpParams();
     for (const [k, v] of Object.entries(params ?? {})) if (v !== undefined && v !== null && v !== '') p = p.set(k, String(v));
-    return firstValueFrom(this.http.get<T>(`/api${url}`, { params: p }));
+    return firstValueFrom(this.http.get<T>(`${API_BASE}${url}`, { params: p }));
   }
-  private post<T>(url: string, body: unknown = {}) { return firstValueFrom(this.http.post<T>(`/api${url}`, body)); }
-  private put<T>(url: string, body: unknown) { return firstValueFrom(this.http.put<T>(`/api${url}`, body)); }
-  private patch<T>(url: string, body: unknown) { return firstValueFrom(this.http.patch<T>(`/api${url}`, body)); }
-  private delete(url: string) { return firstValueFrom(this.http.delete<void>(`/api${url}`)); }
+  private post<T>(url: string, body: unknown = {}) { return firstValueFrom(this.http.post<T>(`${API_BASE}${url}`, body)); }
+  private put<T>(url: string, body: unknown) { return firstValueFrom(this.http.put<T>(`${API_BASE}${url}`, body)); }
+  private patch<T>(url: string, body: unknown) { return firstValueFrom(this.http.patch<T>(`${API_BASE}${url}`, body)); }
+  private delete(url: string) { return firstValueFrom(this.http.delete<void>(`${API_BASE}${url}`)); }
 
   // Auth
   loginUsers() { return this.get<LoginUser[]>('/auth/users'); }

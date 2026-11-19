@@ -2,7 +2,7 @@
 
 PDV para bar: **vendas rápidas no celular** (balcão e comandas) e **gestão pelo computador**, com **Pix via Mercado Pago**.
 
-- `backend/Pdv.Api` — ASP.NET Core 9 (minimal APIs), EF Core + SQLite, JWT com login por PIN
+- `backend/Pdv.Api` — ASP.NET Core 9 (minimal APIs), EF Core (SQLite em dev, PostgreSQL/Supabase em produção), JWT com login por PIN
 - `frontend` — Angular 20 (standalone, signals, zoneless), sem biblioteca de UI
 
 ## Rodando em desenvolvimento
@@ -47,16 +47,54 @@ MercadoPago__WebhookSecret=...                # assinatura secreta do webhook
 
 Fluxo: `POST /v1/payments` com `payment_method_id=pix` → o app mostra o QR e o copia-e-cola → a confirmação chega pelo webhook (assinatura `x-signature` validada) **e** por consulta a cada 3 s, então funciona mesmo sem URL pública. A API nunca confia no corpo do webhook: sempre consulta o status no Mercado Pago. A venda só fecha (e baixa o estoque) quando o valor é quitado.
 
-## Produção
+## Produção: Hostinger + Supabase + API
 
-```bash
-cd frontend && npx ng build          # gera o site em backend/Pdv.Api/wwwroot
-cd ../backend/Pdv.Api && dotnet publish -c Release
+```
+Celular / PC ──► Hostinger (site Angular, estático)
+                     │  chamadas /api
+                     ▼
+                 API C# (Render, Railway, Fly.io, VPS...) ──► Supabase (PostgreSQL)
+                     ▲
+        Mercado Pago (webhook do Pix)
 ```
 
-A API serve o frontend e a `/api` no mesmo endereço. Configure obrigatoriamente `Jwt__Key` (32+ caracteres aleatórios) e use HTTPS.
+A hospedagem compartilhada da Hostinger não roda .NET, por isso a API fica em um serviço à parte.
 
-**PostgreSQL:** adicione o pacote `Npgsql.EntityFrameworkCore.PostgreSQL`, troque `UseSqlite` por `UseNpgsql` em `Program.cs` e ajuste `ConnectionStrings__Default`. Hoje o banco é criado com `EnsureCreated`; antes de ir para produção, passe a usar migrations (`dotnet ef migrations add Inicial`).
+### 1. Banco no Supabase
+1. Crie o projeto escolhendo a região **South America (São Paulo)**.
+2. Em **Connect → Connection string**, copie a do **Session pooler** (a conexão direta só funciona com IPv6).
+3. Pronto: a API cria as tabelas sozinha ao iniciar (migrations), no schema `pdv`. Fora do schema `public`, as tabelas não ficam expostas pela API REST automática do Supabase.
+
+### 2. API (exemplo com Render)
+1. **New → Web Service**, conecte o repositório do GitHub, escolha **Docker** e informe `backend` como *Root Directory* (o `Dockerfile` está lá).
+2. Configure as variáveis de ambiente de [`backend/.env.example`](backend/.env.example):
+   `ConnectionStrings__Default`, `Jwt__Key`, `Cors__Origins`, `Seed__AdminPin` e as do Mercado Pago.
+3. Depois do deploy, teste `https://SUA-API/api/health`.
+
+Qualquer serviço que rode Docker serve. A API lê a porta da variável `PORT` quando ela existe.
+
+### 3. Site na Hostinger
+```bash
+cd frontend && npm run build:hostinger
+```
+1. Edite `frontend/dist/hostinger/browser/config.js` e coloque o endereço da API em `apiUrl`.
+2. Envie **todo o conteúdo** de `frontend/dist/hostinger/browser/` para o `public_html` (Gerenciador de Arquivos ou FTP), incluindo o `.htaccess`, que faz as rotas do Angular funcionarem ao recarregar a página.
+3. Coloque o domínio do site em `Cors__Origins` na API.
+
+Para trocar a API depois, basta editar o `config.js` no `public_html`, sem recompilar.
+
+### 4. Mercado Pago
+`MercadoPago__AccessToken` com a credencial de produção, `MercadoPago__NotificationUrl=https://SUA-API/api/webhooks/mercadopago` e, no painel do Mercado Pago, cadastre essa mesma URL no webhook (evento **Pagamentos**) e copie a assinatura secreta para `MercadoPago__WebhookSecret`.
+
+### Migrations
+Ao mudar as entidades, gere uma nova migration (o `dotnet-ef` está no manifesto de ferramentas do `backend`):
+```bash
+cd backend && dotnet tool restore && dotnet ef migrations add NomeDaMudanca --project Pdv.Api/Pdv.Api.csproj --output-dir Data/Migrations
+```
+Em desenvolvimento (SQLite), o banco continua sendo criado com `EnsureCreated`; apague o `pdv.db` quando o modelo mudar.
+
+### Tudo em um servidor só (alternativa)
+`npm run build` gera o site em `backend/Pdv.Api/wwwroot`, e a API passa a servir o site e a `/api` no mesmo endereço (não precisa de CORS nem de `config.js`).
 
 ## Observações
 

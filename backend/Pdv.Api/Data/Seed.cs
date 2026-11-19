@@ -6,13 +6,16 @@ namespace Pdv.Api.Data;
 
 public static class Seed
 {
-    public static async Task RunAsync(AppDbContext db)
+    /// <param name="adminPin">PIN do primeiro administrador (Seed:AdminPin). Em produção, sempre defina.</param>
+    public static async Task RunAsync(AppDbContext db, string? adminPin = null)
     {
         if (!await db.Users.AnyAsync())
         {
-            db.Users.AddRange(
-                new User { Name = "Administrador", Role = UserRole.Admin, PinHash = PinHasher.Hash("1234") },
-                new User { Name = "Caixa", Role = UserRole.Atendente, PinHash = PinHasher.Hash("0000") });
+            var pin = PinHasher.IsValidPin(adminPin) ? adminPin! : "1234";
+            db.Users.Add(new User { Name = "Administrador", Role = UserRole.Admin, PinHash = PinHasher.Hash(pin) });
+            // O usuário "Caixa" de exemplo só é criado quando o PIN do admin não foi definido (desenvolvimento).
+            if (!PinHasher.IsValidPin(adminPin))
+                db.Users.Add(new User { Name = "Caixa", Role = UserRole.Atendente, PinHash = PinHasher.Hash("0000") });
         }
 
         if (!await db.Categories.AnyAsync())

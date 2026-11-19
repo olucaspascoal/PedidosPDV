@@ -27,6 +27,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        if (Database.IsNpgsql()) b.HasDefaultSchema(DatabaseSetup.Schema);
+
         b.Entity<User>(e =>
         {
             e.Property(x => x.Name).HasMaxLength(80).IsRequired();
