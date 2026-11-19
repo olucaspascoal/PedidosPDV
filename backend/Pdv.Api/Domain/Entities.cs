@@ -1,9 +1,9 @@
 namespace Pdv.Api.Domain;
 
 public enum UserRole { Admin, Atendente }
-public enum OrderStatus { Aberta, Paga, Cancelada }
+public enum OrderStatus { Aberta, Paga, Cancelada, Estornada }
 public enum PaymentMethod { Pix, Dinheiro, Credito, Debito }
-public enum PaymentStatus { Pendente, Aprovado, Cancelado, Expirado, Recusado }
+public enum PaymentStatus { Pendente, Aprovado, Cancelado, Expirado, Recusado, Estornado }
 
 public class User
 {
@@ -95,6 +95,10 @@ public class Payment
     public int UserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? PaidAt { get; set; }
+    /// <summary>Estorno: quando, por quem e por quê (o valor estornado é sempre o pagamento inteiro).</summary>
+    public DateTime? RefundedAt { get; set; }
+    public int? RefundedByUserId { get; set; }
+    public string? RefundReason { get; set; }
 }
 
 public class DomainException(string message, int statusCode = 400) : Exception(message)

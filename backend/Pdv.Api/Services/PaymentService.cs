@@ -138,6 +138,75 @@ public class PaymentService(
         finally { Gate.Release(); }
     }
 
+    /// <summary>
+    /// Estorna a venda inteira: devolve todos os pagamentos aprovados, cancela Pix pendentes,
+    /// marca a venda como Estornada e devolve o estoque se ela já tinha sido fechada.
+    /// Pix é devolvido pelo Mercado Pago; dinheiro e cartão só são registrados (devolva no caixa ou na maquininha).
+    /// </summary>
+    public async Task<Order> RefundOrderAsync(int orderId, string? reason, int userId, CancellationToken ct)
+    {
+        await Gate.WaitAsync(ct);
+        try
+        {
+            var order = await orders.LoadAsync(orderId, ct) ?? throw new DomainException("Venda não encontrada.", 404);
+            if (order.Status is OrderStatus.Cancelada or OrderStatus.Estornada)
+                throw new DomainException("Esta venda já foi cancelada ou estornada.", 409);
+
+            // Um Pix pendente pode ter sido pago agora há pouco: atualiza antes de decidir.
+            foreach (var pending in order.Payments.Where(p => p.Method == PaymentMethod.Pix && p.Status == PaymentStatus.Pendente).ToList())
+            {
+                pending.Order = order;
+                await RefreshAsync(pending, ct);
+            }
+
+            var approved = order.Payments.Where(p => p.Status == PaymentStatus.Aprovado).ToList();
+            if (approved.Count == 0)
+                throw new DomainException(order.Status == OrderStatus.Aberta
+                    ? "Esta venda não tem pagamentos aprovados. Use \"Cancelar venda\"."
+                    : "Esta venda não tem pagamentos aprovados para estornar.");
+
+            var cleanReason = reason?.Trim() is { Length: > 0 } r ? (r.Length > 200 ? r[..200] : r) : null;
+            var wasPaid = order.Status == OrderStatus.Paga;
+
+            // Pix primeiro: se o Mercado Pago recusar, nada de dinheiro/cartão fica marcado como devolvido.
+            foreach (var payment in approved.OrderBy(p => p.Method == PaymentMethod.Pix ? 0 : 1))
+            {
+                if (payment.Method == PaymentMethod.Pix && payment.ExternalId is { } externalId)
+                {
+                    try { await pix.RefundAsync(externalId, $"pdv-refund-payment-{payment.Id}", ct); }
+                    catch (Exception ex) when (ex is PixGatewayException or HttpRequestException or TaskCanceledException)
+                    {
+                        log.LogError(ex, "Falha ao estornar o Pix {ExternalId} da venda {OrderId}", externalId, order.Id);
+                        await db.SaveChangesAsync(CancellationToken.None); // guarda os estornos que já deram certo
+                        throw new DomainException($"Não foi possível estornar o Pix. {ex.Message}", 502);
+                    }
+                }
+                payment.Status = PaymentStatus.Estornado;
+                payment.RefundedAt = DateTime.UtcNow;
+                payment.RefundedByUserId = userId;
+                payment.RefundReason = cleanReason;
+                await db.SaveChangesAsync(ct);
+            }
+
+            await CancelPendingPixAsync(order, ct);
+
+            if (wasPaid)
+            {
+                var ids = order.Items.Select(i => i.ProductId).Distinct().ToList();
+                var tracked = await db.Products.Where(p => ids.Contains(p.Id) && p.TrackStock).ToListAsync(ct);
+                foreach (var product in tracked)
+                    product.Stock += order.Items.Where(i => i.ProductId == product.Id).Sum(i => i.Quantity);
+            }
+
+            order.Status = OrderStatus.Estornada;
+            order.ClosedAt ??= DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            log.LogInformation("Venda {OrderId} estornada por {UserId}: {Amount:N2}", order.Id, userId, approved.Sum(p => p.Amount));
+            return order;
+        }
+        finally { Gate.Release(); }
+    }
+
     /// <summary>Cancela Pix pendentes de uma venda (ex.: ao cancelar a venda).</summary>
     public async Task CancelPendingPixAsync(Order order, CancellationToken ct)
     {

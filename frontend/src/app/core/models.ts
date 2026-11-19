@@ -1,7 +1,7 @@
 export type UserRole = 'Admin' | 'Atendente';
-export type OrderStatus = 'Aberta' | 'Paga' | 'Cancelada';
+export type OrderStatus = 'Aberta' | 'Paga' | 'Cancelada' | 'Estornada';
 export type PaymentMethod = 'Pix' | 'Dinheiro' | 'Credito' | 'Debito';
-export type PaymentStatus = 'Pendente' | 'Aprovado' | 'Cancelado' | 'Expirado' | 'Recusado';
+export type PaymentStatus = 'Pendente' | 'Aprovado' | 'Cancelado' | 'Expirado' | 'Recusado' | 'Estornado';
 
 export interface User { id: number; name: string; role: UserRole; active: boolean; }
 export interface LoginUser { id: number; name: string; role: UserRole; }
@@ -23,6 +23,7 @@ export interface Payment {
   id: number; orderId: number; method: PaymentMethod; status: PaymentStatus; amount: number;
   cashReceived: number | null; change: number | null; qrCode: string | null; qrCodeBase64: string | null;
   ticketUrl: string | null; expiresAt: string | null; createdAt: string; paidAt: string | null; simulated: boolean;
+  refundedAt: string | null; refundReason: string | null;
 }
 
 export interface Order {

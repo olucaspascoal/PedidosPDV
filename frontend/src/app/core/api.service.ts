@@ -60,6 +60,7 @@ export class ApiService {
   updateItem(id: number, itemId: number, quantity: number) { return this.patch<Order>(`/orders/${id}/items/${itemId}`, { quantity }); }
   updateOrder(id: number, body: { label: string | null; notes: string | null; discount?: number }) { return this.patch<Order>(`/orders/${id}`, body); }
   cancelOrder(id: number) { return this.post<Order>(`/orders/${id}/cancel`); }
+  refundOrder(id: number, reason: string | null) { return this.post<Order>(`/orders/${id}/refund`, { reason }); }
 
   // Pagamentos
   pay(orderId: number, body: { method: PaymentMethod; amount?: number; cashReceived?: number }) {

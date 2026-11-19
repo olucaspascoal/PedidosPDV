@@ -83,6 +83,13 @@ public static class OrderEndpoints
             return Results.Ok(OrderDto.From(order, pix.IsSimulated));
         });
 
+        // Estorno da venda inteira (só administradores).
+        orders.MapPost("/{id:int}/refund", async (int id, RefundOrderRequest? req, ClaimsPrincipal user, PaymentService payments, OrderService svc, IPixGateway pix, CancellationToken ct) =>
+        {
+            await payments.RefundOrderAsync(id, req?.Reason, user.UserId(), ct);
+            return Results.Ok(await Reload(id, svc, pix, ct));
+        }).RequireAuthorization("Admin");
+
         // ---------- Pagamentos ----------
         orders.MapPost("/{id:int}/payments", async (int id, CreatePaymentRequest req, ClaimsPrincipal user, PaymentService payments, OrderService svc, CancellationToken ct) =>
         {

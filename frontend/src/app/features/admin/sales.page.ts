@@ -79,10 +79,42 @@ import { DateRange, RangeFilter } from './range-filter';
                 <br /><small class="muted">{{ p.createdAt | date: 'dd/MM HH:mm' }}@if (p.change) { · troco {{ p.change | currency }} }</small></span>
               <span class="num">{{ p.amount | currency }}</span>
             </div>
+            @if (p.refundedAt) {
+              <p class="muted small refund-note">Estornado em {{ p.refundedAt | date: 'dd/MM HH:mm' }}@if (p.refundReason) { · {{ p.refundReason }} }</p>
+            }
           } @empty { <p class="muted small">Nenhum pagamento.</p> }
 
-          @if (o.status === 'Aberta') {
-            <button class="btn danger block cancel" (click)="cancel(o)">Cancelar venda</button>
+          @if (refunding()) {
+            <div class="refund-box">
+              <h3>Estornar {{ refundable(o) | currency }}?</h3>
+              <ul class="small">
+                @for (p of approved(o); track p.id) {
+                  <li>
+                    <b>{{ methodLabel[p.method] }} {{ p.amount | currency }}</b>:
+                    @switch (p.method) {
+                      @case ('Pix') { devolvido ao cliente pelo Mercado Pago{{ p.simulated ? ' (simulado)' : '' }}. }
+                      @case ('Dinheiro') { devolva o dinheiro no caixa. }
+                      @default { faça o estorno na maquininha. }
+                    }
+                  </li>
+                }
+              </ul>
+              <p class="muted small">{{ o.status === 'Paga' ? 'A venda fica como Estornada e o estoque dos itens volta.' : 'A venda fica como Estornada.' }} Não dá para desfazer.</p>
+              <label class="small">Motivo (opcional)
+                <input class="input" maxlength="200" [value]="reason()" (input)="reason.set($any($event.target).value)" placeholder="Ex.: cliente desistiu" />
+              </label>
+              <div class="refund-actions">
+                <button class="btn" (click)="refunding.set(false)" [disabled]="busy()">Voltar</button>
+                <button class="btn danger" (click)="refund(o)" [disabled]="busy()">{{ busy() ? 'Estornando…' : 'Confirmar estorno' }}</button>
+              </div>
+            </div>
+          } @else {
+            @if (approved(o).length) {
+              <button class="btn danger block cancel" (click)="reason.set(''); refunding.set(true)">Estornar venda</button>
+            }
+            @if (o.status === 'Aberta' && !approved(o).length) {
+              <button class="btn danger block cancel" (click)="cancel(o)">Cancelar venda</button>
+            }
           }
         </aside>
       </div>
@@ -100,6 +132,12 @@ import { DateRange, RangeFilter } from './range-filter';
     .line { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
     .line.big { font-weight: 600; font-size: 17px; border: 0; }
     .cancel { margin-top: 24px; }
+    .refund-note { margin: -4px 0 6px; }
+    .refund-box { margin-top: 24px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .refund-box h3 { font-size: 16px; }
+    .refund-box ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+    .refund-box label { display: flex; flex-direction: column; gap: 6px; }
+    .refund-actions { display: flex; gap: 10px; justify-content: flex-end; }
   `,
 })
 export class SalesPage implements OnInit {
@@ -111,10 +149,13 @@ export class SalesPage implements OnInit {
   protected range = signal<DateRange>({ from: localDate(), to: localDate() });
   protected status = signal<OrderStatus | undefined>(undefined);
   protected selected = signal<Order | null>(null);
+  protected refunding = signal(false);
+  protected reason = signal('');
+  protected busy = signal(false);
   protected methodLabel = METHOD_LABEL;
   protected statuses: { label: string; value: OrderStatus | undefined }[] = [
     { label: 'Todas', value: undefined }, { label: 'Pagas', value: 'Paga' },
-    { label: 'Abertas', value: 'Aberta' }, { label: 'Canceladas', value: 'Cancelada' },
+    { label: 'Abertas', value: 'Aberta' }, { label: 'Canceladas', value: 'Cancelada' }, { label: 'Estornadas', value: 'Estornada' },
   ];
   protected paidTotal = computed(() => this.list().filter(o => o.status === 'Paga').reduce((s, o) => s + o.total, 0));
 
@@ -132,7 +173,22 @@ export class SalesPage implements OnInit {
 
   methods(o: OrderSummary) { return o.methods.map(m => METHOD_LABEL[m]).join(' + ') || '—'; }
 
+  approved(o: Order) { return o.payments.filter(p => p.status === 'Aprovado'); }
+  refundable(o: Order) { return this.approved(o).reduce((s, p) => s + p.amount, 0); }
+
+  async refund(o: Order) {
+    this.busy.set(true);
+    try {
+      this.selected.set(await this.api.refundOrder(o.id, this.reason().trim() || null));
+      this.refunding.set(false);
+      this.toast.ok('Venda estornada');
+      this.load();
+    } catch (e) { this.toast.error(errorMessage(e)); }
+    finally { this.busy.set(false); }
+  }
+
   async open(o: OrderSummary) {
+    this.refunding.set(false);
     try { this.selected.set(await this.api.order(o.id)); }
     catch (e) { this.toast.error(errorMessage(e)); }
   }

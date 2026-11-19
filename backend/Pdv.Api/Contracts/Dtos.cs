@@ -30,16 +30,17 @@ public record CreateOrderRequest(string? Label, string? Notes, List<OrderItemInp
 public record AddItemsRequest(List<OrderItemInput> Items);
 public record UpdateItemRequest(int Quantity);
 public record UpdateOrderRequest(string? Label, string? Notes, decimal? Discount);
+public record RefundOrderRequest(string? Reason);
 
 public record OrderItemDto(int Id, int ProductId, string ProductName, decimal UnitPrice, int Quantity, string? Notes, decimal Total);
 
 public record PaymentDto(int Id, int OrderId, PaymentMethod Method, PaymentStatus Status, decimal Amount,
     decimal? CashReceived, decimal? Change, string? QrCode, string? QrCodeBase64, string? TicketUrl,
-    DateTime? ExpiresAt, DateTime CreatedAt, DateTime? PaidAt, bool Simulated)
+    DateTime? ExpiresAt, DateTime CreatedAt, DateTime? PaidAt, bool Simulated, DateTime? RefundedAt, string? RefundReason)
 {
     public static PaymentDto From(Payment p, bool simulated) => new(p.Id, p.OrderId, p.Method, p.Status, p.Amount,
         p.CashReceived, p.Change, p.QrCode, p.QrCodeBase64, p.TicketUrl, p.ExpiresAt, p.CreatedAt, p.PaidAt,
-        simulated && p.Method == PaymentMethod.Pix);
+        simulated && p.Method == PaymentMethod.Pix, p.RefundedAt, p.RefundReason);
 }
 
 public record OrderDto(int Id, string? Label, string? Notes, OrderStatus Status, string UserName, DateTime CreatedAt,

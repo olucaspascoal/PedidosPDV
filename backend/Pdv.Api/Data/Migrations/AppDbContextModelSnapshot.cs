@@ -186,6 +186,16 @@ namespace Pdv.Api.Data.Migrations
                     b.Property<string>("QrCodeBase64")
                         .HasColumnType("text");
 
+                    b.Property<string>("RefundReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("RefundedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RefundedByUserId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)

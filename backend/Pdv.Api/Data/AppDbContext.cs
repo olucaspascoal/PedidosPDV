@@ -74,6 +74,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<Payment>(e =>
         {
             e.Property(x => x.ExternalId).HasMaxLength(64);
+            e.Property(x => x.RefundReason).HasMaxLength(200);
             e.HasIndex(x => x.ExternalId);
             e.HasIndex(x => x.PaidAt);
         });

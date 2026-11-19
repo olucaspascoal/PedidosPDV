@@ -34,6 +34,8 @@ public interface IPixGateway
     /// <summary>Status bruto do Mercado Pago (pending, approved, cancelled, rejected...).</summary>
     Task<string> GetStatusAsync(string externalId, CancellationToken ct);
     Task CancelAsync(string externalId, CancellationToken ct);
+    /// <summary>Devolve ao cliente o valor inteiro de um Pix aprovado.</summary>
+    Task RefundAsync(string externalId, string idempotencyKey, CancellationToken ct);
 }
 
 public static class PixStatus
@@ -43,7 +45,8 @@ public static class PixStatus
         "approved" => PaymentStatus.Aprovado,
         "rejected" => PaymentStatus.Recusado,
         "cancelled" when expiresAt is { } e && e <= DateTime.UtcNow => PaymentStatus.Expirado,
-        "cancelled" or "refunded" or "charged_back" => PaymentStatus.Cancelado,
+        "refunded" => PaymentStatus.Estornado,
+        "cancelled" or "charged_back" => PaymentStatus.Cancelado,
         _ => PaymentStatus.Pendente, // pending, in_process, authorized
     };
 }
@@ -93,6 +96,14 @@ public class MercadoPagoPixGateway(HttpClient http, MercadoPagoOptions options, 
     public async Task CancelAsync(string externalId, CancellationToken ct)
     {
         using var msg = Request(HttpMethod.Put, $"v1/payments/{Uri.EscapeDataString(externalId)}", new { status = "cancelled" });
+        using var _ = await SendAsync(msg, ct);
+    }
+
+    public async Task RefundAsync(string externalId, string idempotencyKey, CancellationToken ct)
+    {
+        // Corpo vazio = estorno total. A chave de idempotência evita estornar duas vezes numa nova tentativa.
+        using var msg = Request(HttpMethod.Post, $"v1/payments/{Uri.EscapeDataString(externalId)}/refunds", new { });
+        msg.Headers.Add("X-Idempotency-Key", idempotencyKey);
         using var _ = await SendAsync(msg, ct);
     }
 
@@ -146,6 +157,14 @@ public class SimulatedPixGateway : IPixGateway
     public Task CancelAsync(string externalId, CancellationToken ct)
     {
         _status[externalId] = "cancelled";
+        return Task.CompletedTask;
+    }
+
+    public Task RefundAsync(string externalId, string idempotencyKey, CancellationToken ct)
+    {
+        if (_status.GetValueOrDefault(externalId) != "approved")
+            throw new PixGatewayException("Só é possível estornar um Pix aprovado.");
+        _status[externalId] = "refunded";
         return Task.CompletedTask;
     }
 
