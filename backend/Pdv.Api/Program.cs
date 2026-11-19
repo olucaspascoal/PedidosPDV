@@ -21,7 +21,14 @@ builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Ad
 builder.Services.AddProblemDetails();
 
 // Banco: SQLite em desenvolvimento; PostgreSQL (Supabase) quando a connection string for "Host=..." ou "postgresql://...".
-var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=pdv.db";
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    // Variável criada mas vazia (ex.: no painel da hospedagem) cairia num Npgsql sem host; em produção, falhe com mensagem clara.
+    if (!builder.Environment.IsDevelopment())
+        throw new InvalidOperationException("ConnectionStrings:Default está vazia. Configure a variável ConnectionStrings__Default com a connection string do banco.");
+    connectionString = "Data Source=pdv.db";
+}
 builder.Services.AddDbContext<AppDbContext>(o => DatabaseSetup.Configure(o, connectionString));
 
 // Frontend hospedado em outro domínio (ex.: Hostinger): liste as origens em Cors:Origins, separadas por vírgula.
