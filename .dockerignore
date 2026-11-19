@@ -1,0 +1,16 @@
+**/._*
+**/.DS_Store
+.git
+.claude
+.mcp.json
+**/node_modules/
+**/dist/
+**/.angular/
+**/bin/
+**/obj/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/wwwroot/
+**/appsettings.Development.json
+**/.env

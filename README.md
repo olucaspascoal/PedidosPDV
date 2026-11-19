@@ -102,6 +102,8 @@ Em desenvolvimento (SQLite), o banco continua sendo criado com `EnsureCreated`; 
 ### Tudo em um servidor só (alternativa)
 `npm run build` gera o site em `backend/Pdv.Api/wwwroot`, e a API passa a servir o site e a `/api` no mesmo endereço (não precisa de CORS nem de `config.js`).
 
+No Coolify, use o [`Dockerfile`](Dockerfile) da raiz, que compila o Angular e a API num container só: **Base Directory** `/` e **Dockerfile Location** `/Dockerfile` (o resto igual ao passo 2). É assim que a produção atual roda, em `https://pdv-api.pascoal.tech`.
+
 ## Observações
 
 - O disco do projeto é exFAT: o macOS cria arquivos `._*`, que já estão excluídos do build (.csproj, tsconfig e .gitignore).
