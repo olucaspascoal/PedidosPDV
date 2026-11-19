@@ -1,17 +1,26 @@
 {
+  "id": "/",
   "name": "Brinde PDV",
   "short_name": "Brinde",
   "description": "Vendas rápidas no balcão e gestão do bar",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#f5f5f5",
   "theme_color": "#ff4f1f",
   "lang": "pt-BR",
+  "categories": ["business", "food"],
   "icons": [
     { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Vender", "url": "/pdv", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Comandas", "url": "/pdv/comandas", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Gestão", "url": "/gestao", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
   ]
 }
