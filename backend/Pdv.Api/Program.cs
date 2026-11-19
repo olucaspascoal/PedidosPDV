@@ -34,7 +34,15 @@ builder.Services.AddDbContext<AppDbContext>(o => DatabaseSetup.Configure(o, conn
 // Frontend hospedado em outro domínio (ex.: Hostinger): liste as origens em Cors:Origins, separadas por vírgula.
 var corsOrigins = (builder.Configuration["Cors:Origins"] ?? "")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-    .Select(o => o.TrimEnd('/')).ToArray();
+    .Select(o => o.TrimEnd('/'))
+    // Aceita só o domínio ("meusite.com.br"): vira https://meusite.com.br e https://www.meusite.com.br.
+    .SelectMany(o => o.Contains("://")
+        ? new[] { o }
+        : o.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+            ? new[] { $"https://{o}", $"https://{o[4..]}" }
+            : new[] { $"https://{o}", $"https://www.{o}" })
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));
 
 // Atrás do proxy da hospedagem: usa o IP real do cliente (limite de tentativas de login) e o esquema https.
