@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, output, signal } from '@angular/core';
 import { toDataURL } from 'qrcode';
 import { Icon } from './icon';
 
@@ -21,20 +21,31 @@ export class Logo {
   readonly compact = input(false);
 }
 
-/** Miniatura do produto: imagem quando houver, senão o ícone da categoria. */
+/**
+ * Miniatura do produto: imagem quando houver, senão o ícone da categoria.
+ * A foto aparece inteira (contain) sobre fundo branco, sem cortar garrafas altas.
+ */
 @Component({
   selector: 'app-thumb',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.photo]': 'showImage()' },
   template: `
-    @if (src() && !failed()) {
-      <img [src]="src()" [alt]="" loading="lazy" (error)="failed.set(true)" />
+    @if (showImage()) {
+      <!-- crossorigin permite ao service worker guardar a imagem; se o site não liberar CORS, tenta de novo sem. -->
+      @if (cors()) {
+        <img [src]="url()" alt="" loading="lazy" decoding="async" crossorigin="anonymous" (error)="cors.set(false)" />
+      } @else {
+        <img [src]="url()" alt="" loading="lazy" decoding="async" (error)="failed.set(true)" />
+      }
     } @else {
       <span class="emoji">{{ icon() }}</span>
     }
   `,
   styles: `
-    :host { display: grid; place-items: center; overflow: hidden; background: var(--brand-50); border-radius: inherit; }
-    img { width: 100%; height: 100%; object-fit: cover; }
+    :host { position: relative; display: grid; place-items: center; overflow: hidden; background: var(--brand-50); border-radius: inherit; }
+    :host(.photo) { background: #fff; }
+    /* Absoluto: a foto ocupa exatamente o quadro (senão usa a altura natural e corta garrafas altas). */
+    img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 6%; box-sizing: border-box; }
     .emoji { font-size: var(--thumb-emoji, 40px); line-height: 1; filter: saturate(1.1); }
   `,
 })
@@ -42,6 +53,17 @@ export class Thumb {
   readonly src = input<string | null>(null);
   readonly icon = input('🍺');
   protected failed = signal(false);
+  protected cors = signal(true);
+  protected showImage = computed(() => !!this.src() && !this.failed());
+  protected url = computed(() => thumbUrl(this.src()));
+}
+
+/** Imagens da VTEX (lojas como Coop e Zona Sul) aceitam redimensionar na URL: pede 300 px em vez do original. */
+export function thumbUrl(src: string | null): string | null {
+  if (!src) return src;
+  return /\.(vteximg\.com\.br|vtexassets\.com)\//.test(src)
+    ? src.replace(/\/arquivos\/ids\/(\d+)(-[^/?]*)?/, '/arquivos/ids/$1-300-300')
+    : src;
 }
 
 /** Desenha o QR Code a partir do código Pix copia-e-cola. */

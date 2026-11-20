@@ -38,5 +38,19 @@
     "!/**/*.*",
     "!/**/*__*",
     "!/**/*__*/**"
+  ],
+  "dataGroups": [
+    {
+      "name": "fotos-produtos",
+      "urls": [
+        "https://*.vteximg.com.br/**",
+        "https://*.vtexassets.com/**"
+      ],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 300,
+        "maxAge": "30d"
+      }
+    }
   ]
 }
